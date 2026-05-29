@@ -1,3 +1,4 @@
+from albuns.models import Album
 from django.db import models
 from usuarios.models import Perfil
 
@@ -25,9 +26,26 @@ class MembroGrupo(models.Model):
     data_entrada = models.DateTimeField(auto_now_add=True)
     admin = models.BooleanField(default=False)  # True se for dono/admin, False se for membro comum
 
+    ultima_vez_curador = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ('perfil', 'clube')
 
     def __str__(self):
         funcao = "Admin" if self.admin else "Membro"
         return f"{self.perfil.usuario.username} é {funcao} no clube {self.clube.nome_clube}"
+
+class Queue(models.Model):
+    clube = models.ForeignKey(Clube, on_delete=models.CASCADE, related_name='queue')
+    album = models.ForeignKey(Album, on_delete=models.CASCADE)
+    sugerido_por = models.ForeignKey(Perfil, on_delete=models.SET_NULL, null=True)
+    adicionado_em = models.DateTimeField(auto_now_add=True)
+
+    posicao = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['posicao', 'adicionado_em']
+        unique_together = ('clube', 'album')
+
+    def __str__(self):
+        return f"{self.album.titulo} na fila de {self.clube.nome_clube}"

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home - Discora{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+
+    <div class="home_container">
+        <div class="central_box">
+
+            <div class="central_content_row">
+
+                <div class="left_side">
+                    <h2>Seu próximo álbum favorito está aqui!</h2>
+                    <p>Explore lançamentos, resgate clássicos esquecidos e compartilhe seu gosto musical com uma comunidade feita por e para ouvintes reais.</p>
+                </div>
+
+                <div class="right_side">
+                    <div class="vinil_container">
+                        <div id="vinil" class="vinil_disco">
+                            <div id="centro-vinil" class="vinil_centro">
+                                <div class="vinil_furo"></div>
+                            </div>
+                        </div>
+                        <div class="vinil_info">
+                            <h3 id="musica-titulo">Sincronizando...</h3>
+                            <p id="musica-artista"></p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="central_actions_row">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'listar_albuns' %}" class="btn_cadastrar_home">
+                        Álbum do Dia
+                    </a>
+                {% else %}
+                    <a href="{% url 'cadastro' %}" class="btn_cadastrar_home">
+                        Cadastrar no Sistema
+                    </a>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const centroVinil = document.getElementById('centro-vinil');
+        const tituloTexto = document.getElementById('musica-titulo');
+        const artistaTexto = document.getElementById('musica-artista');
+
+        let cacheAlbuns = [];
+        let indiceAtual = 0;
+        let buscandoDados = false;
+
+        // Função mágica de Preloading para carregar as imagens na memória do navegador
+        function precarregarImagens(albuns) {
+            albuns.forEach(album => {
+                if (album.url_capa) {
+                    const img = new Image();
+                    img.src = album.url_capa; // O navegador baixa a imagem silenciosamente em background
+                }
+            });
+        }
+
+        async function buscarLoteDeAlbuns() {
+            if (buscandoDados) return;
+            buscandoDados = true;
+
+            try {
+                const resposta = await fetch('/albuns/api/lote-vinil/');
+                if (!resposta.ok) throw new Error('Erro na requisição');
+
+                const dados = await resposta.json();
+
+                if (dados && dados.albuns && dados.albuns.length > 0) {
+                    // Executa o pré-carregamento antes de expor os álbuns ao carrossel
+                    precarregarImagens(dados.albuns);
+
+                    cacheAlbuns = [...cacheAlbuns, ...dados.albuns];
+
+                    if (indiceAtual === 0 && cacheAlbuns.length === dados.albuns.length) {
+                        rodarCarrosselVisual();
+                    }
+                }
+            } catch (erro) {
+                console.error('Erro ao abastecer cache local:', erro);
+                if (cacheAlbuns.length === 0) {
+                    tituloTexto.innerText = "Discora Soundtrack";
+                    artistaTexto.innerText = "Modo de segurança ativo";
+                }
+            } finally {
+                buscandoDados = false;
+            }
+        }
+
+        function rodarCarrosselVisual() {
+            if (cacheAlbuns.length === 0) return;
+
+            if (indiceAtual >= cacheAlbuns.length) {
+                indiceAtual = 0;
+            }
+
+            const album = cacheAlbuns[indiceAtual];
+
+            if (album && album.url_capa) {
+                // Como a imagem já foi pré-carregada na memória pela função 'precarregarImagens',
+                // a alteração visual abaixo acontece de forma instantânea!
+                centroVinil.style.backgroundImage = `url('${album.url_capa}')`;
+                tituloTexto.innerText = album.titulo || album.nome || "Álbum Desconhecido";
+                artistaTexto.innerText = album.artista || "Artista Desconhecido";
+            }
+
+            indiceAtual++;
+
+            if (cacheAlbuns.length - indiceAtual === 3) {
+                buscarLoteDeAlbuns();
+            }
+        }
+
+        buscarLoteDeAlbuns();
+        setInterval(rodarCarrosselVisual, 4000);
+    </script>
+{% endblock %}

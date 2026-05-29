@@ -1,8 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import transaction
 
-
-# 1. Tabela Pai de Perfil (Generalização)
 class Perfil(models.Model):
     TIPO_PERFIL = [
         ('U', 'Usuário'),
@@ -14,7 +13,6 @@ class Perfil(models.Model):
         return f"Perfil ID {self.id} ({self.get_tipo_display()})"
 
 
-# 2. Modelo de Usuário (Especialização)
 class Usuario(AbstractUser):
     perfil_ptr = models.OneToOneField(
         Perfil,
@@ -22,20 +20,20 @@ class Usuario(AbstractUser):
         parent_link=True,
         primary_key=True
     )
-
     email = models.EmailField(unique=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
     def save(self, *args, **kwargs):
-        # Garante a inserção correta na tabela pai Perfil
         if not self.perfil_ptr_id:
-            perfil_pai = Perfil.objects.create(tipo='U')
-            self.perfil_ptr = perfil_pai
+            with transaction.atomic():
+                perfil_pai = Perfil.objects.create(tipo='U')
+                self.perfil_ptr = perfil_pai
+                super().save(*args, **kwargs)
         else:
             self.tipo = 'U'
-        super().save(*args, **kwargs)
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return self.username

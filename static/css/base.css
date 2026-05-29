@@ -1,0 +1,120 @@
+/* ==========================================================================
+   1. RESET GLOBAL
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   2. BODY / ESTRUTURA (Sticky Footer Layout)
+   ========================================================================== */
+body {
+    font-family: "DynaPuff", system-ui;
+    font-optical-sizing: auto   ;
+    background: #f4f4f9;
+    color: #333;
+
+    /* Forces the body to take full screen height and stack elements vertically */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+
+    /* Acts like a spring, pushing the footer down on short pages */
+    flex: 1;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background: #f9f9f9;
+    width: 100%;
+}
+
+/* ==========================================================================
+   3. NAVBAR (Grid Strategy)
+   ========================================================================== */
+nav {
+    height: 80px;
+    background-color: #f9f9f9;
+    padding: 0 40px;
+
+    /* Splits the navbar into 3 strict columns: Left, Center, Right */
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+}
+
+/* ==========================================================================
+   4. LOGO CENTRALIZADA
+   ========================================================================== */
+.nav-logo {
+    /* Locks the logo explicitly into the center column */
+    grid-column: 2;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-logo img {
+    height: 55px;
+    display: block;
+}
+
+/* Remove efeitos do link da logo */
+.nav-logo:hover {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+/* ==========================================================================
+   5. LINKS DIREITA
+   ========================================================================== */
+.auth-group {
+    /* Locks links into the right column and pushes them to the far right edge */
+    grid-column: 3;
+    justify-self: end;
+
+    display: flex;
+    align-items: center;
+    gap: 20px; /* Mantém o espaçamento uniforme de 20px entre o nome e o botão */
+}
+
+/* Estilo para o botão/link do usuário logado na navbar */
+.user-name-nav {
+    color: #073d53;
+    font-weight: bold;
+    font-size: 0.95rem;
+    text-decoration: none; /* Garante que não haverá sublinhado de link comum */
+    background-color: #eef2f5;
+    padding: 6px 14px;
+    border-radius: 20px;
+    display: inline-block;
+    transition: background-color 0.2s ease;
+}
+
+/* Efeito sutil de hover para indicar que agora é clicável */
+.user-name-nav:hover {
+    background-color: #e2e8f0;
+    color: #052e3f;
+}
+
+/* ==========================================================================
+   6. LINKS
+   ========================================================================== */
+nav a {
+    color: #073d53;
+    text-decoration: none;
+    font-weight: bold;
+    font-variant-lightning: normal;
+    padding: 8px 16px;
+}
