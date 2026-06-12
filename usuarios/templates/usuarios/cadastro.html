@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cadastro - Discora{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'css/cadastro.css' %}">
+
+    <div class="home_container">
+        <div class="cadastro_box">
+
+            <div style="text-align: center; width: 100%;">
+                <h2 style="margin-bottom: 10px; font-size: 28px;">Criar sua Conta</h2>
+                <p style="color: #555; font-size: 14px;">Entre para a comunidade do Discora</p>
+            </div>
+
+            <form method="POST" class="cadastro_form">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="form_global_errors">
+                        {% for error in form.non_field_errors %}
+                            <p style="margin: 0;">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                    <div class="form_group">
+                        <label>{{ field.label }}</label>
+                        {{ field }}
+
+                        {% if field.help_text %}
+                            <small>{{ field.help_text|safe }}</small>
+                        {% endif %}
+
+                        {% for error in field.errors %}
+                            <span class="field_error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+
+                <button type="submit" class="btn_enviar_cadastro">
+                    Finalizar Cadastro
+                </button>
+            </form>
+
+            <div style="text-align: center; font-size: 14px;">
+                Já tem uma conta? <a href="{% url 'login' %}" style="color: #B42E1A; text-decoration: none; font-weight: bold;">Faça Login</a>
+            </div>
+
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,54 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam actor {
+    BackgroundColor White
+    BorderColor #084C6B
+}
+skinparam usecase {
+    BackgroundColor White
+    BorderColor #191C1E
+}
+
+actor "Visitante (Anônimo)" as guest
+actor "Usuário Autenticado" as user
+actor "Administrador do Clube" as admin
+
+rectangle "Plataforma Discora" {
+    usecase "Cadastrar-se no Sistema" as UC1
+    usecase "Efetuar Login (via E-mail)" as UC2
+    usecase "Visualizar Vitrine de Álbuns (Home/Vinil)" as UC3
+    usecase "Consultar Detalhes do Álbum" as UC4
+    usecase "Gerenciar Perfil" as UC5
+    usecase "Criar Clube de Escuta" as UC6
+    usecase "Aderir (Entrar) em um Clube" as UC7
+    usecase "Sugerir Álbum na Fila (Queue)" as UC8
+    usecase "Registrar Escuta de Álbum" as UC9
+    usecase "Emitir Review (Nota e Comentário)" as UC10
+    usecase "Gerenciar Membros do Clube" as UC11
+}
+
+' Relacionamentos do Visitante
+guest --> UC1
+guest --> UC2
+guest --> UC3
+
+' Herança de Atores (O Usuário Autenticado faz tudo o que o visitante faz + ações logadas)
+user --|> guest
+user --> UC4
+user --> UC5
+user --> UC6
+user --> UC7
+user --> UC8
+user --> UC9
+user --> UC10
+
+' O Admin é um membro do grupo com a flag admin=True no banco
+admin --|> user
+admin --> UC11
+
+' Inclusões lógicas (Restrições das Views)
+UC8 ..> UC2 : <<include>> : @login_required
+UC10 ..> UC2 : <<include>> : @login_required
+@enduml

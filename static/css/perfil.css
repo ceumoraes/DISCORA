@@ -1,0 +1,160 @@
+/* ==========================================================================
+   ESTILOS EXCLUSIVOS DA TELA DE PERFIL (Discora)
+   ========================================================================== */
+
+/* Importa o fundo xadrez ondulado para manter a identidade */
+@import url('home.css');
+
+button, a {
+    font-family: inherit;
+}
+
+.perfil_box {
+    background: #f9f9f9;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    width: 100%;
+    max-width: 450px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    text-align: center;
+}
+
+/* Avatar com a inicial do usuário */
+.avatar_fallback {
+    width: 80px;
+    height: 80px;
+    background-color: #B42E1A;
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto 15px auto;
+    box-shadow: 0 4px 10px rgba(180, 46, 26, 0.2);
+}
+
+.perfil_header h2 {
+    font-size: 26px;
+    margin: 0 0 5px 0;
+    color: #111;
+}
+
+.perfil_header h2 span {
+    color: #B42E1A;
+}
+
+.status_tag {
+    font-size: 13px;
+    color: #777;
+    background: #eee;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    margin: 0;
+}
+
+/* Exibição dos dados */
+.perfil_info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    text-align: left;
+}
+
+.info_group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.info_group label {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #777;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.info_value {
+    background: #f0f0f0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #333;
+    border: 1px solid #e0e0e0;
+}
+
+/* Painel de status do servidor */
+.painel_status_sincronizacao {
+    background: #e6f7ed;
+    border: 1px solid #a3e635;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.painel_status_sincronizacao .status_icon {
+    font-size: 13px;
+    font-weight: bold;
+    color: #166534;
+    margin-bottom: 4px;
+}
+
+.painel_status_sincronizacao p {
+    font-size: 12px;
+    color: #166534;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Botões de Ação */
+.perfil_actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn_secundario {
+    display: block;
+    text-align: center;
+    background: transparent;
+    color: #555;
+    border: 2px solid #ddd;
+    padding: 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn_secundario:hover {
+    background: #f0f0f0;
+    color: #111;
+}
+
+.btn_logout {
+    width: 100%;
+    background-color: #B42E1A;
+    color: #ffffff;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(180, 46, 26, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn_logout:hover {
+    background-color: #962413;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(180, 46, 26, 0.35);
+}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Meu Perfil - Discora{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="{% static 'css/perfil.css' %}">
+
+    <div class="home_container">
+        <div class="perfil_box">
+
+            <div class="perfil_header">
+                <div class="avatar_fallback">
+                    {{ user.username|slice:":1"|upper }}
+                </div>
+                <h2 class="dynapuff">Olá, <span>{{ user.username }}</span>!</h2>
+                <p class="status_tag">Membro do Discora</p>
+            </div>
+
+            <div class="perfil_info">
+                <div class="info_group">
+                    <label>E-mail da Conta</label>
+                    <div class="info_value">{{ user.email }}</div>
+                </div>
+
+                <div class="info_group">
+                    <label>Data de Ingresso</label>
+                    <div class="info_value">{{ user.date_joined|date:"d \d\e F \d\e Y" }}</div>
+                </div>
+            </div>
+
+            <div class="perfil_actions">
+                <a href="{% url 'home' %}" class="btn_secundario">Voltar para a Home</a>
+
+                <form method="POST" action="{% url 'logout' %}" style="display: inline; width: 100%;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn_logout">
+                        Terminar Sessão (Logout)
+                    </button> </form>
+            </div>
+
+        </div>
+    </div>
+{% endblock %} ```
