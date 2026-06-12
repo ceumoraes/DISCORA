@@ -1,9 +1,9 @@
 /* ==========================================================================
-   ESTILOS EXCLUSIVOS DA PÁGINA HOME (Xadrez Ondulado Apenas no Fundo)
+   ESTILOS EXCLUSIVOS DA PÁGINA HOME (Xadrez Animado e Ondulado Apenas no Fundo)
    ========================================================================== */
 
 main {
-    /* Forçar o conteúdo a tocar nas laterais */
+    /* Forçar o conteúdo a tocar nas laterais da página */
     max-width: none !important;
     margin: 0 !important;
     width: 100% !important;
@@ -28,7 +28,7 @@ main::before {
     width: 100%;
     height: 100%;
 
-    /* Garante que o fundo fica atrás do texto */
+    /* Garante que o fundo fica atrás de todo o conteúdo */
     z-index: -1;
 
     /* 1. Desenho do xadrez de quadrados perfeitos */
@@ -41,8 +41,8 @@ main::before {
     background-size: 80px 80px;
     background-position: 0 0, 40px 40px;
 
-    /* 2. O filtro de distorção líquido (aplicado APENAS nesta camada) */
-    filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='wavy'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' result='noise'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='noise' scale='25' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3C/svg%3E#wavy");
+    /* 2. Link direto para o filtro interno que o JavaScript está movendo */
+    filter: url(#wavy-psicodelico);
 }
 
 h2 {
@@ -63,15 +63,15 @@ h2 {
 /* CAIXA CENTRAL EXPANDIDA (Organizada verticalmente para aceitar o botão na base) */
 .central_box {
     background: #f9f9f9;
-    padding: 50px 60px 40px 60px; /* Um pouco menos de espaço embaixo devido ao botão */
+    padding: 50px 60px 40px 60px;
     border-radius: 16px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.15);
     width: 100%;
     max-width: 980px;
 
     display: flex;
-    flex-direction: column; /* Organiza o conteúdo de cima e o botão de baixo */
-    gap: 35px; /* Espaço entre o bloco de cima e a linha do botão */
+    flex-direction: column;
+    gap: 35px;
 }
 
 /* Linha interna para manter os textos e o vinil lado a lado */
@@ -117,13 +117,13 @@ h2 {
 .central_actions_row {
     display: flex;
     width: 100%;
-    justify-content: center; /* Centraliza o botão perfeitamente */
+    justify-content: center;
     align-items: center;
 }
 
-/* Estilização do Botão de Cadastro */
+/* Estilização do Botão de Cadastro / Ação */
 .btn_cadastrar_home {
-    background-color: #09516f; /* Usando a cor vermelha de identidade do seu projeto */
+    background-color: #09516f;
     color: #ffffff;
     padding: 14px 36px;
     font-size: 16px;
@@ -131,13 +131,12 @@ h2 {
     border-radius: 8px;
     box-shadow: 0 4px 15px rgb(7 61 83);
     transition: all 0.2s ease-in-out;
-    transition: all 0.2s ease-in-out;
 }
 
 /* Efeito suave ao passar o mouse */
 .btn_cadastrar_home:hover {
-    background-color: #06384c; /* Tom sutilmente mais escuro para o hover */
-    transform: translateY(-2px); /* Leve elevação magnética */
+    background-color: #06384c;
+    transform: translateY(-2px);
     box-shadow: 0 6px 20px rgb(4 36 51);
     font-weight: bold;
 }
@@ -166,7 +165,7 @@ h2 {
 }
 
 .vinil_centro {
-    width: 150px; /* Miolo ampliado para dar destaque máximo às capas */
+    width: 150px;
     height: 150px;
     border-radius: 50%;
     background-color: #333;
@@ -180,7 +179,7 @@ h2 {
 .vinil_furo {
     width: 14px;
     height: 14px;
-    background-color: #f9f9f9; /* Casando com a cor de fundo da caixinha */
+    background-color: #f9f9f9;
     border-radius: 50%;
     position: absolute;
     top: 50%;

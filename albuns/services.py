@@ -27,7 +27,6 @@ class SpotifyService:
         return self.sp
 
     def buscar_albuns(self, termo_busca, limite=30):
-        """Busca álbuns utilizando a biblioteca Spotipy de forma posicional e segura."""
         try:
             sp = self._conectar()
 
@@ -90,11 +89,10 @@ class LastFMService:
 
 
 class OrquestradorAlbunsService:
-    """RESPONSABILIDADE: Garantir estoque e saúde de dados no PostgreSQL de forma assíncrona e segura."""
+    """Garantir estoque de dados."""
 
     @staticmethod
     def verificar_e_reabastecer_estoque():
-        """Sorteia uma estratégia aleatória apenas para verificar se o banco precisa de dados."""
         estrategias = ['genero', 'ano', 'curinga']
         escolha = random.choice(estrategias)
 
@@ -118,29 +116,21 @@ class OrquestradorAlbunsService:
             print(
                 f"[Background Thread] Estoque baixo para '{termo_sorteado}' ({filtro_banco.count()}). Alimentando o banco...")
 
-            # Limpa conexões fantasmas antes de abrir uma nova Thread para evitar travamentos
             connections.close_all()
 
             threading.Thread(
                 target=OrquestradorAlbunsService.garantir_abastecimento_online,
                 args=(query_api, termo_sorteado),
-                daemon=True  # Torna a thread um daemon para que ela não trave o desligamento do servidor
+                daemon=True
             ).start()
 
     @staticmethod
-    def garantizar_abastecimento_online(query_api, termo_busca):
-        return OrquestradorAlbunsService.garantir_abastecimento_online(query_api, termo_busca)
-
-    @staticmethod
     def garantir_abastecimento_online(query_api, termo_busca):
-        """Busca novos álbuns e salva no banco usando isolamento de transação e conexões limpas."""
         origem = 'spotify'
         spotify = SpotifyService()
 
-        # 1. TENTA O SPOTIFY
         resultados = spotify.buscar_albuns(query_api, 30)
 
-        # 2. CONTINGÊNCIA ATIVA (SE O SPOTIFY FALHAR)
         if not resultados:
             print("[Contingência Ativa] Spotify falhou ou limitou acesso. Acionando Last.fm...")
             try:
@@ -155,10 +145,8 @@ class OrquestradorAlbunsService:
             print("[Abastecimento] Nenhuma das APIs retornou dados para o termo.")
             return
 
-        # 3. GRAVAÇÃO BLINDADA E ATÔMICA NO BANCO DE DADOS
         novos_salvos = 0
         try:
-            # Força o Django a abrir uma transação única e isolada para esta Thread
             with transaction.atomic():
                 for item in resultados:
                     id_chave = item.get('id_spotify')
@@ -195,31 +183,18 @@ class OrquestradorAlbunsService:
         except Exception as db_err:
             print(f"[Abastecimento] Falha de concorrência ao gravar no banco: {db_err}")
         finally:
-            # Garante o fechamento das conexões desta thread ao terminar, evitando vazamento de memória
             connections.close_all()
 
 
 class VitrineService:
-    """RESPONSABILIDADE UNICA: Gerar a randomização pura dos discos para a interface/Home."""
+    """RESPONSABILIDADE UNICA: Gerar a randomização pura dos discos para a interface."""
+
 
     @staticmethod
     def obter_lote_aleatorio_home():
-        """
-        Puxa um lote pulverizado direto do banco de dados de forma instantânea.
-        Garante que o carrossel nunca sofra com o efeito monocultura de termos repetidos.
-        """
-        # Dispara o verificador de estoque de forma assíncrona para trabalhar em background
         OrquestradorAlbunsService.verificar_e_reabastecer_estoque()
 
-        # Seleciona 20 álbuns totalmente aleatórios do banco inteiro, misturando gêneros e anos
-        total_no_banco = Album.objects.count()
-
-        # Se o banco tiver poucos dados (início do app), faz um fallback simples
-        if total_no_banco < 20:
-            albuns_sorteados = Album.objects.all().order_by('?')[:20]
-        else:
-            # Algoritmo de pulverização: extrai uma amostra aleatória real do banco de dados
-            albuns_sorteados = Album.objects.all().order_by('?')[:20]
+        albuns_sorteados = Album.objects.all().order_by('?')[:20]
 
         return [{
             'id_spotify': a.id_spotify if a.id_spotify else a.id_lastfm,

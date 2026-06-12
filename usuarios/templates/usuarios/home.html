@@ -6,6 +6,13 @@
 {% block content %}
     <link rel="stylesheet" href="{% static 'css/home.css' %}">
 
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <filter id="wavy-psicodelico">
+            <feTurbulence id="turbulencia" type="fractalNoise" baseFrequency="0.015" numOctaves="3" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+    </svg>
+
     <div class="home_container">
         <div class="central_box">
 
@@ -48,6 +55,7 @@
     </div>
 
     <script>
+        // ====== CONTROLO DO CARROSSEL DE ÁLBUNS ======
         const centroVinil = document.getElementById('centro-vinil');
         const tituloTexto = document.getElementById('musica-titulo');
         const artistaTexto = document.getElementById('musica-artista');
@@ -56,12 +64,11 @@
         let indiceAtual = 0;
         let buscandoDados = false;
 
-        // Função mágica de Preloading para carregar as imagens na memória do navegador
         function precarregarImagens(albuns) {
             albuns.forEach(album => {
                 if (album.url_capa) {
                     const img = new Image();
-                    img.src = album.url_capa; // O navegador baixa a imagem silenciosamente em background
+                    img.src = album.url_capa;
                 }
             });
         }
@@ -77,9 +84,7 @@
                 const dados = await resposta.json();
 
                 if (dados && dados.albuns && dados.albuns.length > 0) {
-                    // Executa o pré-carregamento antes de expor os álbuns ao carrossel
                     precarregarImagens(dados.albuns);
-
                     cacheAlbuns = [...cacheAlbuns, ...dados.albuns];
 
                     if (indiceAtual === 0 && cacheAlbuns.length === dados.albuns.length) {
@@ -107,8 +112,6 @@
             const album = cacheAlbuns[indiceAtual];
 
             if (album && album.url_capa) {
-                // Como a imagem já foi pré-carregada na memória pela função 'precarregarImagens',
-                // a alteração visual abaixo acontece de forma instantânea!
                 centroVinil.style.backgroundImage = `url('${album.url_capa}')`;
                 tituloTexto.innerText = album.titulo || album.nome || "Álbum Desconhecido";
                 artistaTexto.innerText = album.artista || "Artista Desconhecido";
@@ -121,6 +124,21 @@
             }
         }
 
+        // ====== INTERAÇÃO LÍQUIDA INTERATIVA COM O RATO ======
+        const turbulencia = document.getElementById('turbulencia');
+
+        // Captura o movimento do rato em qualquer parte da janela
+        window.addEventListener('mousemove', (evento) => {
+            // Normaliza as coordenadas do rato para valores decimais pequenos entre 0.01 e 0.02
+            // Dividimos a posição do pixel pelo tamanho total da janela e aplicamos uma escala sutil
+            let frequenciaX = 0.01 + (evento.clientX / window.innerWidth) * 0.01;
+            let frequenciaY = 0.01 + (evento.clientY / window.innerHeight) * 0.01;
+
+            // Aplica instantaneamente a nova frequência gerando o efeito de arrasto na água
+            turbulencia.setAttribute('baseFrequency', `${frequenciaX} ${frequenciaY}`);
+        });
+
+        // Inicializa o motor de dados e o carrossel
         buscarLoteDeAlbuns();
         setInterval(rodarCarrosselVisual, 4000);
     </script>
