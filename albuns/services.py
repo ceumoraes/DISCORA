@@ -5,15 +5,14 @@ import threading
 from pathlib import Path
 import requests
 from django.conf import settings
+from django.db import connections, transaction
 from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from .models import Album
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-path_env = BASE_DIR / 'core' / '.env'
-load_dotenv(dotenv_path=path_env)
-
+load_dotenv(dotenv_path=BASE_DIR / 'core' / '.env')
 
 class SpotifyService:
     def __init__(self):
@@ -21,30 +20,33 @@ class SpotifyService:
         self.client_secret = getattr(settings, 'SPOTIFYAPI_CLIENT_SECRET', os.getenv('SPOTIFYAPI_CLIENT_SECRET'))
         self.sp = None
 
-    def buscar_albuns(self, termo_busca, limite=30):
-        try:
-            url_token = "https://accounts.spotify.com/api/token"
-            resposta_teste = requests.post(url_token, data={'grant_type': 'client_credentials'},
-                                           auth=(self.client_id, self.client_secret), timeout=2)
-            if resposta_teste.status_code == 429:
-                raise PermissionError()
-        except:
-            raise PermissionError()
+    def _conectar(self):
+        if not self.sp:
+            auth_manager = SpotifyClientCredentials(client_id=self.client_id, client_secret=self.client_secret)
+            self.sp = spotipy.Spotify(auth_manager=auth_manager)
+        return self.sp
 
+    def buscar_albuns(self, termo_busca, limite=30):
+        """Busca álbuns utilizando a biblioteca Spotipy de forma posicional e segura."""
         try:
-            if not self.sp:
-                auth_manager = SpotifyClientCredentials(client_id=self.client_id, client_secret=self.client_secret)
-                self.sp = spotipy.Spotify(auth_manager=auth_manager)
-            dados = self.sp.search(q=termo_busca, type='album', limit=limite)
-            if not dados or "albums" not in dados: return []
+            sp = self._conectar()
+
+            dados = sp.search(str(termo_busca), int(limite), 0, 'album')
+
+            if not dados or "albums" not in dados:
+                return []
 
             return [{
                 "id_spotify": item["id"],
                 "nome": item["name"],
-                "artista": item["artists"][0]['name'],
-                "url_capa": item["images"][0]['url'] if item["images"] else None
+                "artista": item["artists"][0]['name'] if item["artists"] else 'Artista Desconhecido',
+                "url_capa": item["images"][0]['url'] if item["images"] else None,
+                "ano_lancamento": int(item["release_date"].split("-")[0]) if item.get("release_date") and
+                                                                             item["release_date"].split("-")[
+                                                                                 0].isdigit() else None
             } for item in dados["albums"]["items"]]
-        except:
+        except Exception as e:
+            print(f"[SpotifyService] Erro na busca: {e}")
             return []
 
 
@@ -54,42 +56,45 @@ class LastFMService:
         self.base_url = "http://ws.audioscrobbler.com/2.0/"
 
     def buscar_albuns(self, termo_busca, limite=30):
-        if not self.api_key: return []
+        if not self.api_key:
+            return []
         termo_limpo = termo_busca.replace('genre:', '').replace('year:', '').replace('"', '').replace('%', '')
         try:
-            resposta = requests.get(self.base_url,
-                                    params={'method': 'album.search', 'album': termo_limpo, 'api_key': self.api_key,
-                                            'format': 'json', 'limit': limite}, timeout=3)
+            resposta = requests.get(
+                self.base_url,
+                params={'method': 'album.search', 'album': termo_limpo, 'api_key': self.api_key, 'format': 'json',
+                        'limit': limite},
+                timeout=3
+            )
             if resposta.status_code == 200:
                 lista_albuns = resposta.json().get('results', {}).get('albummatches', {}).get('album', [])
                 resultados = []
                 for album in lista_albuns:
                     imagens = album.get('image', [])
                     url_capa = next((img.get('#text') for img in reversed(imagens) if img.get('#text')), "")
-                    if not url_capa: continue
-                    artista = album.get('artist', 'Artista Desconhecido')
-                    titulo = album.get('name', 'Álbum Desconhecido')
+                    if not url_capa:
+                        continue
+
                     resultados.append({
-                        'id_spotify': f"lastfm_{artista}_{titulo}".replace(" ", "_").lower(),
-                        'nome': titulo,
-                        'artista': artista,
-                        'url_capa': url_capa
+                        'id_spotify': f"lastfm_{album.get('artist')}_{album.get('name')}".replace(" ", "_").lower(),
+                        'nome': album.get('name', 'Álbum Desconhecido'),
+                        'artista': album.get('artist', 'Artista Desconhecido'),
+                        'url_capa': url_capa,
+                        'ano_lancamento': None
                     })
                 return resultados
             return []
-        except:
+        except Exception as e:
+            print(f"[LastFMService] Erro na busca: {e}")
             return []
 
 
 class OrquestradorAlbunsService:
-    """Gerencia de forma isolada o sorteio matemático e o recheio do banco via APIs."""
+    """RESPONSABILIDADE: Garantir estoque e saúde de dados no PostgreSQL de forma assíncrona e segura."""
 
     @staticmethod
-    def sortear_lote_do_banco():
-        """
-        Sorteia uma condicional e puxa os IDs direto do banco.
-        Garante aleatoriedade pura e respostas ultra rápidas.
-        """
+    def verificar_e_reabastecer_estoque():
+        """Sorteia uma estratégia aleatória apenas para verificar se o banco precisa de dados."""
         estrategias = ['genero', 'ano', 'curinga']
         escolha = random.choice(estrategias)
 
@@ -109,153 +114,117 @@ class OrquestradorAlbunsService:
             filtro_banco = Album.objects.filter(titulo__icontains=letra)
             query_api = f"{letra}*"
 
-            # Verificação de estoque local
         if filtro_banco.count() < 25:
             print(
-                f"[Estoque Baixo] Apenas {filtro_banco.count()} álbuns para '{termo_sorteado}'. Disparando Orquestrador de Threads...")
+                f"[Background Thread] Estoque baixo para '{termo_sorteado}' ({filtro_banco.count()}). Alimentando o banco...")
+
+            # Limpa conexões fantasmas antes de abrir uma nova Thread para evitar travamentos
+            connections.close_all()
+
             threading.Thread(
                 target=OrquestradorAlbunsService.garantir_abastecimento_online,
-                args=(query_api, termo_sorteado)
+                args=(query_api, termo_sorteado),
+                daemon=True  # Torna a thread um daemon para que ela não trave o desligamento do servidor
             ).start()
-
-        # Resposta imediata baseada nos IDs presentes no banco
-        if filtro_banco.exists():
-            albuns_sorteados = list(filtro_banco.order_by('?')[:20])
-        else:
-            albuns_sorteados = list(Album.objects.all().order_by('?')[:20])
-
-        lista_retorno = []
-        for a in albuns_sorteados:
-            id_ativo = a.id_spotify if a.id_spotify else a.id_lastfm
-            lista_retorno.append({
-                'id_spotify': id_ativo,
-                'titulo': a.titulo,
-                'nome': a.titulo,
-                'artista': a.artista,
-                'url_capa': a.url_capa
-            })
-
-        return lista_retorno
 
     @staticmethod
     def garantizar_abastecimento_online(query_api, termo_busca):
-        # Alias temporário para manter compatibilidade absoluta caso alguma thread antiga chame com "z"
         return OrquestradorAlbunsService.garantir_abastecimento_online(query_api, termo_busca)
 
     @staticmethod
     def garantir_abastecimento_online(query_api, termo_busca):
-        """
-        Busca novos álbuns usando chamadas HTTP puras e isoladas.
-        Se o Spotify falhar ou responder com Rate Limit (429), o Last.fm assume na mesma hora.
-        """
-        resultados = []
+        """Busca novos álbuns e salva no banco usando isolamento de transação e conexões limpas."""
         origem = 'spotify'
+        spotify = SpotifyService()
 
-        # 1. TENTATIVA SPOTIFY (HTTP Pura para evitar travamentos da biblioteca)
-        try:
-            print(f"[Abastecimento] Consultando disjuntor do Spotify para: {query_api}")
-            spotify = SpotifyService()
+        # 1. TENTA O SPOTIFY
+        resultados = spotify.buscar_albuns(query_api, 30)
 
-            url_token = "https://accounts.spotify.com/api/token"
-            res_token = requests.post(
-                url_token,
-                data={'grant_type': 'client_credentials'},
-                auth=(spotify.client_id, spotify.client_secret),
-                timeout=1.5
-            )
-
-            if res_token.status_code == 429:
-                print("[Abastecimento] Instabilidade detectada no Spotify (429). Ignorando...")
-            elif res_token.status_code == 200:
-                access_token = res_token.json().get('access_token')
-
-                url_busca = "https://api.spotify.com/v1/search"
-                headers = {"Authorization": f"Bearer {access_token}"}
-                params = {"q": query_api, "type": "album", "limit": 30}
-
-                res_busca = requests.get(url_busca, headers=headers, params=params, timeout=1.5)
-
-                if res_busca.status_code == 200:
-                    dados = res_busca.json()
-                    lista_itens = dados.get("albums", {}).get("items", [])
-
-                    for item in lista_itens:
-                        ano = None
-                        if item.get("release_date"):
-                            ano_str = item["release_date"].split("-")[0]
-                            if ano_str.isdigit():
-                                ano = int(ano_str)
-
-                        resultados.append({
-                            "id_spotify": item["id"],
-                            "nome": item["name"],
-                            "artista": item["artists"][0]['name'] if item["artists"] else 'Artista Desconhecido',
-                            "url_capa": item["images"][0]['url'] if item["images"] else None,
-                            "ano_lancamento": ano
-                        })
-                    print(f"[Abastecimento] Spotify respondeu com sucesso! {len(resultados)} álbuns encontrados.")
-        except Exception as e:
-            print(f"[Abastecimento] Conexão com Spotify falhou ou estourou o tempo limite.")
-
-        # 2. SE O SPOTIFY TIMEOUT OU RATE LIMIT, O LAST.FM ENTRA EM AÇÃO IMEDIATAMENTE
+        # 2. CONTINGÊNCIA ATIVA (SE O SPOTIFY FALHAR)
         if not resultados:
-            print("\n[Contingência Ativa] Spotify indisponível. Acionando Last.fm imediatamente...")
+            print("[Contingência Ativa] Spotify falhou ou limitou acesso. Acionando Last.fm...")
             try:
                 lastfm = LastFMService()
-                res_lf = lastfm.buscar_albuns(termo_busca=query_api, limite=30)
-                if res_lf:
-                    resultados = res_lf
-                    origem = 'lastfm'
-                    print(f"[Contingência] Last.fm retornou {len(resultados)} álbuns com sucesso.")
-            except Exception as le:
-                print(f"[Contingência] Falha crítica: Last.fm também está indisponível.")
+                resultados = lastfm.buscar_albuns(termo_busca=query_api, limite=30)
+                origem = 'lastfm'
+            except Exception as lf_err:
+                print(f"[Contingência] Erro crítico ao chamar Last.fm: {lf_err}")
                 return
 
         if not resultados:
-            print("[Abastecimento] Nenhuma das APIs retornou dados para este termo.")
+            print("[Abastecimento] Nenhuma das APIs retornou dados para o termo.")
             return
 
-        # 3. GRAVAÇÃO SEGURA E CORRIGIDA NO BANCO DE DADOS
+        # 3. GRAVAÇÃO BLINDADA E ATÔMICA NO BANCO DE DADOS
         novos_salvos = 0
-        for item in resultados:
-            id_chave = item.get('id_spotify')
-            url_img = item.get('url_capa')
-            if not id_chave or not url_img: continue
+        try:
+            # Força o Django a abrir uma transação única e isolada para esta Thread
+            with transaction.atomic():
+                for item in resultados:
+                    id_chave = item.get('id_spotify')
+                    url_img = item.get('url_capa')
+                    if not id_chave or not url_img:
+                        continue
 
-            ano_salvar = item.get('ano_lancamento')
-            if not ano_salvar and '-' in termo_busca:
-                ano_inicio = termo_busca.split('-')[0]
-                if ano_inicio.isdigit():
-                    ano_salvar = int(ano_inicio)
+                    ano_salvar = item.get('ano_lancamento')
+                    if not ano_salvar and '-' in termo_busca:
+                        ano_inicio = termo_busca.split('-')[0]
+                        if ano_inicio.isdigit():
+                            ano_salvar = int(ano_inicio)
 
-            # CORREÇÃO DA DIGITAÇÃO AQUI (Removido o teste quebrado 'origi')
-            if origem == 'spotify':
-                obj, created = Album.objects.get_or_create(
-                    id_spotify=id_chave,
-                    defaults={
-                        'id_lastfm': None,
+                    campos_db = {
                         'titulo': item['nome'],
                         'artista': item['artista'],
                         'url_capa': url_img,
                         'termo_busca': termo_busca,
                         'ano_lancamento': ano_salvar
                     }
-                )
-                if created: novos_salvos += 1
-            else:
-                obj, created = Album.objects.get_or_create(
-                    id_lastfm=id_chave,
-                    defaults={
-                        'id_spotify': None,
-                        'titulo': item['nome'],
-                        'artista': item['artista'],
-                        'url_capa': url_img,
-                        'termo_busca': termo_busca,
-                        'ano_lancamento': ano_salvar
-                    }
-                )
-                if created: novos_salvos += 1
 
-        if novos_salvos > 0:
-            print(
-                f"[Abastecimento] Sucesso! Banco alimentado com +{novos_salvos} novos álbuns vindo do {origem.upper()}.\n")
+                    if origem == 'spotify':
+                        campos_db['id_lastfm'] = None
+                        _, created = Album.objects.get_or_create(id_spotify=id_chave, defaults=campos_db)
+                    else:
+                        campos_db['id_spotify'] = None
+                        _, created = Album.objects.get_or_create(id_lastfm=id_chave, defaults=campos_db)
+
+                    if created:
+                        novos_salvos += 1
+
+            if novos_salvos > 0:
+                print(f"[Abastecimento] Sucesso! +{novos_salvos} álbuns salvos vindos do {origem.upper()}.")
+        except Exception as db_err:
+            print(f"[Abastecimento] Falha de concorrência ao gravar no banco: {db_err}")
+        finally:
+            # Garante o fechamento das conexões desta thread ao terminar, evitando vazamento de memória
+            connections.close_all()
+
+
+class VitrineService:
+    """RESPONSABILIDADE UNICA: Gerar a randomização pura dos discos para a interface/Home."""
+
+    @staticmethod
+    def obter_lote_aleatorio_home():
+        """
+        Puxa um lote pulverizado direto do banco de dados de forma instantânea.
+        Garante que o carrossel nunca sofra com o efeito monocultura de termos repetidos.
+        """
+        # Dispara o verificador de estoque de forma assíncrona para trabalhar em background
+        OrquestradorAlbunsService.verificar_e_reabastecer_estoque()
+
+        # Seleciona 20 álbuns totalmente aleatórios do banco inteiro, misturando gêneros e anos
+        total_no_banco = Album.objects.count()
+
+        # Se o banco tiver poucos dados (início do app), faz um fallback simples
+        if total_no_banco < 20:
+            albuns_sorteados = Album.objects.all().order_by('?')[:20]
+        else:
+            # Algoritmo de pulverização: extrai uma amostra aleatória real do banco de dados
+            albuns_sorteados = Album.objects.all().order_by('?')[:20]
+
+        return [{
+            'id_spotify': a.id_spotify if a.id_spotify else a.id_lastfm,
+            'titulo': a.titulo,
+            'nome': a.titulo,
+            'artista': a.artista,
+            'url_capa': a.url_capa
+        } for a in albuns_sorteados]

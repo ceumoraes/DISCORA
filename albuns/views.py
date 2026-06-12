@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .services import OrquestradorAlbunsService
+from .services import VitrineService  # <--- Importamos o novo serviço focado na Home
 
 
 def listar_album(request):
@@ -20,9 +20,5 @@ def registrar_escuta(request, album_id):
 
 
 def vinil(request):
-    """
-    Entrega o lote sorteado do banco de dados imediatamente.
-    A API externa roda de forma assíncrona se o estoque local estiver baixo.
-    """
-    lote_albuns = OrquestradorAlbunsService.sortear_lote_do_banco()
+    lote_albuns = VitrineService.obter_lote_aleatorio_home()
     return JsonResponse({'albuns': lote_albuns}, status=200)
